@@ -11,6 +11,15 @@ from gensim.models.phrases import Phraser
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.stem import PorterStemmer
 
+class LDAResult(object):
+    def __init__(self, i, prob):
+        from topic_map import Mapper
+        topic_mapper = Mapper()
+
+        self.topic_index = i
+        self.probability = prob
+        self.topic_name = topic_mapper.get(i)
+        self.topic_expert = topic_mapper.getExpert(i)
 
 class LDAWrapper(object):
     def __init__(self):
@@ -155,12 +164,10 @@ class LDAWrapper(object):
         :param inference_output: list of inference output
         :return: list of predict results
         """
-        from topic_map import Mapper
+        ret_list = [LDAResult(i, probability) for i, probability in inference_output]
+        best_topics = sorted([x for x in ret_list if x.probability > 0.2], key=lambda x: -x.probability)
 
-        m = Mapper()
-        ret_list = [(i, m.get(i), prob) for i, prob in inference_output]
-        best_topic = max(ret_list, key=lambda x: x[2])
-        ret_dict = {'list': ret_list, 'expert': m.getExpert(best_topic[0]), 'topic': m.get(best_topic[0])}
+        ret_dict = {'distribution': ret_list, 'topics': best_topics}
         return ret_dict
 
     def handle(self, data, context):

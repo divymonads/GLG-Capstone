@@ -2,11 +2,10 @@ import streamlit as st
 import numpy as np
 from pandas import DataFrame
 import altair as alt
-import os
-import json
-from model_handler import LDAWrapper
+import os, math, json
+from model_handler import LDAWrapper, LDAResult
 
-
+# Page config
 st.set_page_config(
     page_title="GLG Project",
     page_icon="🔎",
@@ -26,14 +25,9 @@ def _max_width_():
     )
 
 
-_max_width_()
+#_max_width_()
 
-c30, c31, c32 = st.columns([3, 1, 3])
-
-with c30:
-    st.title("🔎 GLG Topic Modelling")
-
-
+st.title("🔎 GLG Topic Modelling")
 
 with st.expander("ℹ️ - About this app", expanded=True):
 
@@ -76,26 +70,42 @@ if not submit_button:
 if not doc:
     st.stop()
 
+
 topic_service = LDAWrapper()
 topic_service.initialize(None)
 ans = topic_service.handle(doc, None)
 
 st.markdown("")
 st.markdown("### Results")
-c60, c61, c62 = st.columns([3, 1, 2.5])
-with c60:
-    st.markdown("#### Your Topic: "+ans['topic'])
-    st.markdown("#### Your Expert: "+ans['expert'])
-    st.markdown("")
+if len(ans['topics']) > 0:
 
+    c60, c61, c62 = st.columns([1, 4, 4])
+    with c60:
+        st.markdown("#### Score")
+        for res in ans['topics']:
+            st.markdown(round(res.probability, 2))
+    with c61:
+        st.markdown("#### Topic")
+        for res in ans['topics']:
+            st.markdown(res.topic_name)
+    with c62:
+        st.markdown("#### Expert")
+        for res in ans['topics']:
+            st.markdown(res.topic_expert)
+else:
+    st.markdown("No experts could be recommended, see distribution below")
+
+st.markdown("")
 c63, c64, c65 = st.columns([0.5, 5, 0.5])
 with c64:
-    chart_data = DataFrame( {'Score':[x[2] for x in ans['list']], 'Topics':[x[1] for x in ans['list']]} )
+    scores = [x.probability for x in ans['distribution']]
+    topics = [x.topic_name for x in ans['distribution']]
+    chart_data = DataFrame( {'Score':scores, 'Topics':topics} )
     #st.bar_chart(chart_data)
     bar_chart_alt = alt.Chart(chart_data).mark_bar().encode(
         x='Topics', y='Score',
         color=alt.condition(
-            alt.datum.Topics==ans['topic'],
+            alt.datum.Score >= 0.2,
             alt.value('orange'),
-            alt.value('steelblue'))).properties(title="Topic Distribution", height=700)
+            alt.value('steelblue'))).properties(title="Topic Distribution", height=650)
     st.altair_chart(bar_chart_alt, use_container_width=True)
