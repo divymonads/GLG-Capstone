@@ -2,8 +2,8 @@ import streamlit as st
 import numpy as np
 from pandas import DataFrame
 import altair as alt
-import os, math, json
-from model_handler import LDAWrapper, LDAResult
+import os, math, json, requests
+import boto3
 
 # Page config
 st.set_page_config(
@@ -23,9 +23,6 @@ def _max_width_():
     """,
         unsafe_allow_html=True,
     )
-
-
-#_max_width_()
 
 st.title("🔎 GLG Topic Modelling")
 
@@ -71,9 +68,10 @@ if not doc:
     st.stop()
 
 
-topic_service = LDAWrapper()
-topic_service.initialize(None)
-ans = topic_service.handle(doc, None)
+lda_endpoint = os.environ['LDA_ENDPOINT']
+runtime = boto3.Session().client('sagemaker-runtime')
+response = runtime.invoke_endpoint(EndpointName=lda_endpoint, ContentType='text/plain', Body=doc)
+ans = json.loads(response['Body'].read().decode())
 
 st.markdown("")
 st.markdown("### Results")
@@ -83,23 +81,23 @@ if len(ans['topics']) > 0:
     with c60:
         st.markdown("#### Score")
         for res in ans['topics']:
-            st.markdown(round(res.probability, 2))
+            st.markdown(round(res['probability'], 2))
     with c61:
         st.markdown("#### Topic")
         for res in ans['topics']:
-            st.markdown(res.topic_name)
+            st.markdown(res['topic_name'])
     with c62:
         st.markdown("#### Expert")
         for res in ans['topics']:
-            st.markdown(res.topic_expert)
+            st.markdown(res['topic_expert'])
 else:
     st.markdown("No experts could be recommended, see distribution below")
 
 st.markdown("")
 c63, c64, c65 = st.columns([0.5, 5, 0.5])
 with c64:
-    scores = [x.probability for x in ans['distribution']]
-    topics = [x.topic_name for x in ans['distribution']]
+    scores = [x['probability'] for x in ans['distribution']]
+    topics = [x['topic_name'] for x in ans['distribution']]
     chart_data = DataFrame( {'Score':scores, 'Topics':topics} )
     #st.bar_chart(chart_data)
     bar_chart_alt = alt.Chart(chart_data).mark_bar().encode(

@@ -21,26 +21,28 @@ class LDAResult(object):
         self.topic_name = topic_mapper.get(i)
         self.topic_expert = topic_mapper.getExpert(i)
 
+    def toDict(self):
+        return self.__dict__
+
 class LDAWrapper(object):
-    def __init__(self):
-        self.initialized = False
+    initialized = False
 
-        # main lda model
-        self.lda_model = None
+    # main lda model
+    lda_model = None
 
-        self.bigram_model = None
-        self.trigram_model = None
-        self.dictionary = None
+    bigram_model = None
+    trigram_model = None
+    dictionary = None
 
-        # used for preprocessing
-        self.spacy_en_sm = None
-        self.sw_spacy = None
-        self.sw_nltk = None
-        self.lemmatizer_ntlk = None
-        self.porter_stemmer = None
+    # used for preprocessing
+    spacy_en_sm = None
+    sw_spacy = None
+    sw_nltk = None
+    lemmatizer_ntlk = None
+    porter_stemmer = None
 
-
-    def initialize(self, context):
+    @classmethod
+    def initialize(self):
         """
         Initialize model. This will be called during model loading time
         :param context: Initial context contains model server system properties.
@@ -49,25 +51,25 @@ class LDAWrapper(object):
         self.initialized = True
 
         # Used for preprocessing
-        #nltk.download('stopwords')
-        #nltk.download('punkt')
         self.spacy_en_sm = spacy.load('en_core_web_sm')
         self.sw_spacy = self.spacy_en_sm.Defaults.stop_words
         self.sw_nltk = nltk.corpus.stopwords.words('english')
         self.lemmatizer_ntlk =  WordNetLemmatizer()
         self.porter_stemmer = PorterStemmer()
 
-        prefix = './model_artifacts_50kfilter_full/'
+        prefix = "/opt/ml/"
+        model_path = os.path.join(prefix, "model")
+
 
         # Load our LDA model artifacts
-        self.bigram_model = Phraser.load(os.path.join(prefix, 'bigram_model'))
-        self.trigram_model = Phraser.load(os.path.join(prefix, 'trigram_model'))
-        self.dictionary = corpora.Dictionary.load(os.path.join(prefix, "id2word"))
+        self.bigram_model = Phraser.load(os.path.join(model_path, 'bigram_model'))
+        self.trigram_model = Phraser.load(os.path.join(model_path, 'trigram_model'))
+        self.dictionary = corpora.Dictionary.load(os.path.join(model_path, "id2word"))
 
-        with open(os.path.join(prefix, 'lda_model_25.pk'), 'rb') as pickle_file:
+        with open(os.path.join(model_path, 'lda_model_25.pk'), 'rb') as pickle_file:
             self.lda_model = pickle.load(pickle_file)
 
-
+    @classmethod
     def preprocess(self, text):
         """
         Transform raw input into model input data.
@@ -113,15 +115,12 @@ class LDAWrapper(object):
 
         # (13) remove stopwords (the, to be, etc.)
         # Function to remove the stopwords
-        def stopwords(text):
-            return " ".join([word for word in str(text).split() if word not in self.sw_nltk])
-        # remove more stopwords from Spacy
-        def spacy_stopwords(text):
-            return " ".join([word for word in str(text).split() if word not in self.sw_spacy])
+        def stopwords(text, sw_list):
+            return " ".join([word for word in str(text).split() if word not in sw_list])
 
         # Applying the stopwords
-        new_text = stopwords(new_text)
-        new_text = spacy_stopwords(new_text)
+        new_text = stopwords(new_text, self.sw_nltk)
+        new_text = stopwords(new_text, self.sw_spacy)
 
         # (14) Lemmatization (convert words into its base form)
         new_text = ' '.join([self.lemmatizer_ntlk.lemmatize(word,'v') for word in new_text.split()])
@@ -131,6 +130,7 @@ class LDAWrapper(object):
 
         return new_text
 
+    @classmethod
     def tokenize_and_corpize(self, new_text):
         def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']):
             """https://spacy.io/api/annotation"""
@@ -149,6 +149,7 @@ class LDAWrapper(object):
         corpus_text = self.dictionary.doc2bow(token_words_trigrams_lemm)
         return corpus_text
 
+    @classmethod
     def inference(self, model_input):
         """
         Internal inference methods
@@ -158,19 +159,22 @@ class LDAWrapper(object):
         corpus_text = model_input
         return self.lda_model.get_document_topics(corpus_text, minimum_probability=0)
 
+    @classmethod
     def postprocess(self, inference_output):
         """
         Return predict result in as list.
         :param inference_output: list of inference output
         :return: list of predict results
         """
-        ret_list = [LDAResult(i, probability) for i, probability in inference_output]
+        ret_list = [LDAResult(i, probability.item()) for i, probability in inference_output]
         best_topics = sorted([x for x in ret_list if x.probability > 0.2], key=lambda x: -x.probability)
 
-        ret_dict = {'distribution': ret_list, 'topics': best_topics}
+        ret_dict = {'distribution': [x.toDict() for x in ret_list], \
+                'topics': [x.toDict() for x in best_topics]}
         return ret_dict
 
-    def handle(self, data, context):
+    @classmethod
+    def handle(self, data):
         """
         Call preprocess, inference and post-process functions
         :param data: input data
