@@ -17,16 +17,20 @@ Basic Components:
 - Flask container for NER model (Fine-tuned BERT model)
 
 Both of the model containers were deployed to Sagemaker.
-
-
 ![Image of AWS architecture using Sagemaker and Elastic Beanstalk](./architecture.png)
 
 
+Screenshots of UI + NER:
+![Shows annotations and web form for submission](./NER_result.png)
+
+Screenshots of LDA Result:
+![Shows annotations and web form for submission](./LDA_result.png)
+
 References:
-https://ai.stanford.edu/~ang/papers/nips01-lda.pdf
-Text Analytics with Python: A Practitioner’s Guide to Natural Language Processing by Dipanjan Sarkar
-Blueprints for Text Analytics Using Python by Jens Albrecht, sidharth Ramachandran and Christian Winkler
-Practical Natural Language Processing by Sowmya Vajjala, Bodhisattwa Majumder, Anuj Gupta, Harshit Surana
-https://github.com/philschmid/huggingface-sagemaker-workshop-series
-https://github.com/aws/amazon-sagemaker-examples/tree/main/advanced_functionality/scikit_bring_your_own/container
-https://towardsdatascience.com/how-to-deploy-a-semantic-search-engine-with-streamlit-and-docker-on-aws-elastic-beanstalk-42ddce0422f3
+- https://ai.stanford.edu/~ang/papers/nips01-lda.pdf
+- Text Analytics with Python: A Practitioner’s Guide to Natural Language Processing by Dipanjan Sarkar
+- Blueprints for Text Analytics Using Python by Jens Albrecht, sidharth Ramachandran and Christian Winkler
+- Practical Natural Language Processing by Sowmya Vajjala, Bodhisattwa Majumder, Anuj Gupta, Harshit Surana
+- https://github.com/philschmid/huggingface-sagemaker-workshop-series
+- https://github.com/aws/amazon-sagemaker-examples/tree/main/advanced_functionality/scikit_bring_your_own/container
+- https://towardsdatascience.com/how-to-deploy-a-semantic-search-engine-with-streamlit-and-docker-on-aws-elastic-beanstalk-42ddce0422f3
