@@ -1,0 +1,7 @@
+glg-webapp/__pycache__/
+glg-webapp/.streamlit/
+glg-webapp/model_artifacts_50kfilter_full/
+samples/
+scripts/
+endpoint/container/local_test/test_dir
+endpoint/container-bert-ner/local_test/test_dir
