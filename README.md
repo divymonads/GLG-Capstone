@@ -16,14 +16,14 @@ Basic Components:
 - Flask container for LDA model (LDA Multicore using gensim)
 - Flask container for NER model (Fine-tuned BERT model)
 
-Both of the model containers were deployed to Sagemaker.
+### Both of the model containers were deployed to Sagemaker.
 ![Image of AWS architecture using Sagemaker and Elastic Beanstalk](./architecture.png)
 
 
-Screenshots of UI + NER:
+### Screenshots of UI + NER:
 ![Shows annotations and web form for submission](./NER_result.png)
 
-Screenshots of LDA Result:
+### Screenshots of LDA Result:
 ![Shows annotations and web form for submission](./LDA_result.png)
 
 References:
