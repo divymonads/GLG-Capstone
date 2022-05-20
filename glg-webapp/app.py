@@ -4,6 +4,7 @@ from pandas import DataFrame
 import altair as alt
 import os, math, json, requests
 import boto3
+from annotated_text import annotated_text
 
 # Page config
 st.set_page_config(
@@ -31,6 +32,7 @@ with st.expander("ℹ️ - About this app", expanded=True):
     st.write(
         """
 -   The *GLG Topic Modelling* app is an easy-to-use interface built in Streamlit that runs a custom LDA model which was trained on 2.2 million articles.
+- For NER, the model uses a fine-tuned BERT model. It can take a while to run NER on large articles because of the complexity of the model.
 	    """
     )
 
@@ -41,25 +43,31 @@ st.markdown("### 📄 Paste document")
 with st.form(key="my_form"):
     ce, c2, c3 = st.columns([0.07, 5, 0.07])
     with c2:
+        MAX_WORDS = 2000
         doc = st.text_area(
-            "Paste your text below (max 5000 words)",
+            "Paste your text below (max " + str(MAX_WORDS) + " words)",
             height=300,
         )
 
-        MAX_WORDS = 5000
         import re
-        res = len(re.findall(r"\w+", doc))
+        x = re.findall(r"\w+", doc)
+        res = len(x)
         if res > MAX_WORDS:
             st.warning(
                 "⚠️ Your text contains "
                 + str(res)
                 + " words."
-                + " Only the first 5000 words will be reviewed."
+                + " Only the first "
+                + str(MAX_WORDS)
+                + " words will be reviewed."
             )
 
             doc = doc[:MAX_WORDS]
 
+        run_ner_checkbox = st.checkbox(label="Run Named Entity Recognition")
+
         submit_button = st.form_submit_button(label="✨ Find me an expert!")
+
 
 if not submit_button:
     st.stop()
@@ -67,16 +75,82 @@ if not submit_button:
 if not doc:
     st.stop()
 
+runtime = boto3.Session().client('sagemaker-runtime')
+
+if run_ner_checkbox:
+
+
+    ner_endpoint = os.environ['NER_ENDPOINT']
+    response = runtime.invoke_endpoint(EndpointName=ner_endpoint, ContentType='text/plain', Body=doc)
+    ner_ans = json.loads(response['Body'].read().decode())
+
+
+    # Just list the words
+    def getNERListSimple(names, labels):
+        acc = []
+        zipped = list(zip(names, labels))
+        if len(zipped) > 0: acc.append( (zipped[0][0], zipped[0][1]) )
+        for n,l in zipped[1:]:
+            acc.append("  ")
+            acc.append((n,l))
+        return acc
+
+    # Little finicky, maybe we would have to use the same sentence parser
+    # as the endpoint or add more logic in the endpoint.
+    # The primary is with multiple whitespace formatting.
+    # This also does not preserve the whitespace formatting, converts all to a
+    # single space.
+    # Ignore for now. It probably makes more sense to just list the NER words.
+    def getNERList(start_idxs, stop_idxs, labels):
+        doc_clean = " ".join(doc.split())
+        res = []
+        start = 0
+        stop = 0
+
+        if len(start_idxs) > 0:
+            res.append(doc_clean[:start_idxs[0]])
+
+        while start < len(start_idxs):
+            lbl = labels[start]
+            s_i = start_idxs[start]
+            e_i = stop_idxs[stop]
+
+            name_1 = doc_clean[s_i:e_i]
+            res.append((name_1, lbl))
+            buffer = ""
+            if start < len(start_idxs) - 1:
+                buffer = doc_clean[e_i:start_idxs[start+1]]
+            else:
+                buffer = doc_clean[e_i:]
+            res.append(buffer)
+            start += 1
+            stop += 1
+
+        return res
+
+    annotated_ner = getNERListSimple(ner_ans['names'],ner_ans['labels'])
+
+    st.markdown("")
+    st.markdown("### Results")
+    with st.expander("Named Entity Analysis"):
+        if len(annotated_ner) < 1:
+            st.markdown("No named entities were found")
+        else:
+            annotated_text(*annotated_ner)
+        st.markdown("")
+
+    st.markdown("")
+
+
+if not run_ner_checkbox:
+    st.markdown("")
+    st.markdown("### Results")
 
 lda_endpoint = os.environ['LDA_ENDPOINT']
-runtime = boto3.Session().client('sagemaker-runtime')
 response = runtime.invoke_endpoint(EndpointName=lda_endpoint, ContentType='text/plain', Body=doc)
 ans = json.loads(response['Body'].read().decode())
 
-st.markdown("")
-st.markdown("### Results")
 if len(ans['topics']) > 0:
-
     c60, c61, c62 = st.columns([1, 4, 4])
     with c60:
         st.markdown("#### Score")
