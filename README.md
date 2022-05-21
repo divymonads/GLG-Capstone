@@ -1,4 +1,4 @@
-## GLG Topic Modelling
+## GLG Topic Modeling
 
 ### Gerson Lehrman Group sponsored project on NLP
 
